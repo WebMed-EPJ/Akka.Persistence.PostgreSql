@@ -4,8 +4,8 @@
     <AkkaVersion>1.5.20</AkkaVersion>
     <AkkaHostingVersion>1.5.20</AkkaHostingVersion>
 
-    <!-- Install from version 5.0.11 included all the way up to 8.x.x, but don't go up a major version -->
-    <PostgresLowVersion>5.0.11</PostgresLowVersion>
+    <!-- Install from version 8.0.3 included all the way up to 9.x.x, but don't go up a major version -->
+    <PostgresLowVersion>8.0.3</PostgresLowVersion>
     <PostgresHighVersion>9</PostgresHighVersion>
     <PostgresVersion>[$(PostgresLowVersion), $(PostgresHighVersion)]</PostgresVersion>
   </PropertyGroup>
@@ -20,6 +20,7 @@
 
   <!-- Test dependencies -->
   <ItemGroup>
+    <PackageVersion Include="System.Collections.Immutable" Version="8.0.0" /> <!-- Added because of version collision between 7.0 and 8.0 -->
     <PackageVersion Include="Akka.Hosting.TestKit" Version="$(AkkaVersion)" />
     <PackageVersion Include="FluentAssertions" Version="6.12.0" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
