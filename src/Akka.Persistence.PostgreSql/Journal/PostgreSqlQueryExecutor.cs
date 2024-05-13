@@ -22,6 +22,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Akka.Persistence.Sql.Common.Extensions;
+using Newtonsoft.Json.Linq;
 
 namespace Akka.Persistence.PostgreSql.Journal
 {
@@ -106,7 +107,9 @@ namespace Akka.Persistence.PostgreSql.Journal
                     break;
                 case StoredAsType.JsonB:
                     _serialize = e => new SerializationResult(NpgsqlDbType.Jsonb, JsonConvert.SerializeObject(e.Payload, configuration.JsonSerializerSettings), null);
-                    _deserialize = (type, serialized, manifest, serializerId) => JsonConvert.DeserializeObject((string)serialized, type, configuration.JsonSerializerSettings);
+                    _deserialize = (type, serialized, _, _) => serialized is JObject jObject
+                        ? jObject.ToObject(type, JsonSerializer.Create(configuration.JsonSerializerSettings))
+                        : JsonConvert.DeserializeObject((string)serialized, type, configuration.JsonSerializerSettings);
                     break;
                 case StoredAsType.Json:
                     _serialize = e => new SerializationResult(NpgsqlDbType.Json, JsonConvert.SerializeObject(e.Payload, configuration.JsonSerializerSettings), null);
