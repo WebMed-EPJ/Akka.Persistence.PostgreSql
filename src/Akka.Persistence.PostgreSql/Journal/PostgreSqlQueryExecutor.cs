@@ -28,8 +28,8 @@ namespace Akka.Persistence.PostgreSql.Journal
 {
     public class PostgreSqlQueryExecutor : AbstractQueryExecutor
     {
-        private readonly Func<IPersistentRepresentation, SerializationResult> _serialize;
-        private readonly Func<Type, object, string, int?, object> _deserialize;
+        internal readonly Func<IPersistentRepresentation, SerializationResult> _serialize;
+        internal readonly Func<Type, object, string, int?, object> _deserialize;
 
         public PostgreSqlQueryExecutor(PostgreSqlQueryConfiguration configuration, Akka.Serialization.Serialization serialization, ITimestampProvider timestampProvider)
             : base(configuration, serialization, timestampProvider)
@@ -49,8 +49,9 @@ namespace Akka.Persistence.PostgreSql.Journal
                     {Configuration.TagsColumnName} VARCHAR({tagsColumnSize}) NULL,
                     {Configuration.SerializerIdColumnName} INTEGER NULL,
                     CONSTRAINT {Configuration.JournalEventsTableName}_uq UNIQUE ({Configuration.PersistenceIdColumnName}, {Configuration.SequenceNrColumnName})
-                );";
-
+                ); CREATE INDEX IF NOT EXISTS IX_{Configuration.JournalEventsTableName}_{Configuration.SequenceNrColumnName} ON {Configuration.FullJournalTableName}  USING btree (
+                    {Configuration.SequenceNrColumnName} ASC NULLS LAST) INCLUDE({Configuration.PersistenceIdColumnName})
+                ;";
             CreateMetaTableSql = $@"
                 CREATE TABLE IF NOT EXISTS {Configuration.FullMetaTableName} (
                     {Configuration.PersistenceIdColumnName} VARCHAR(255) NOT NULL,
