@@ -11,6 +11,9 @@ using Npgsql;
 using System;
 using System.Data.Common;
 using Akka.Event;
+using Akka.Annotations;
+using System.Runtime.CompilerServices;
+using Akka.Persistence.Sql.Common;
 
 namespace Akka.Persistence.PostgreSql.Journal
 {
@@ -21,19 +24,22 @@ namespace Akka.Persistence.PostgreSql.Journal
 
     public class PostgreDbBatchSqlJournal : PostgreSqlJournal
     {
-        public readonly PostgreSqlPersistence Extension = PostgreSqlPersistence.Get(Context.System);
-        public PostgreSqlJournalSettings JournalSettings { get; }
         public PostgreDbBatchSqlJournal(Config journalConfig) : base(journalConfig)
         {
             var config = journalConfig.WithFallback(Extension.DefaultJournalConfig);
-            StoredAsType storedAs;
-            var storedAsString = config.GetString("stored-as");
-            if (!Enum.TryParse(storedAsString, true, out storedAs))
-            {
-                throw new ConfigurationException($"Value [{storedAsString}] of the 'stored-as' HOCON config key is not valid. Valid values: bytea, json, jsonb.");
-            }
 
-            QueryExecutor = new PostgreSqlDbBatchQueryExecutor(new PostgreSqlQueryConfiguration(
+            QueryExecutor = new PostgreSqlDbBatchQueryExecutor(
+                CreateQueryConfiguration(config, Settings),
+                Context.System.Serialization,
+                GetTimestampProvider(config.GetString("timestamp-provider")), 
+                Context.GetLogger());
+        }
+
+        [InternalApi]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static PostgreSqlQueryConfiguration CreateQueryConfiguration(Config config, JournalSettings settings)
+        {
+            return new PostgreSqlQueryConfiguration(
                 schemaName: config.GetString("schema-name"),
                 journalEventsTableName: config.GetString("table-name"),
                 metaTableName: config.GetString("metadata-table-name"),
@@ -47,14 +53,13 @@ namespace Akka.Persistence.PostgreSql.Journal
                 orderingColumn: "ordering",
                 serializerIdColumnName: "serializer_id",
                 timeout: config.GetTimeSpan("connection-timeout"),
-                storedAs: storedAs,
+                storedAs: config.GetStoredAsType("stored-as"),
                 defaultSerializer: config.GetString("serializer"),
+                readIsolationLevel: settings.ReadIsolationLevel,
+                writeIsolationLevel: settings.WriteIsolationLevel,
                 useSequentialAccess: config.GetBoolean("sequential-access"),
-                useBigIntPrimaryKey: config.GetBoolean("use-bigint-identity-for-ordering-column")),
-                    Context.System.Serialization,
-                    GetTimestampProvider(config.GetString("timestamp-provider")), Context.GetLogger());
-
-            JournalSettings = new PostgreSqlJournalSettings(config);
+                useBigIntPrimaryKey: config.GetBoolean("use-bigint-identity-for-ordering-column"),
+                tagsColumnSize: config.GetInt("tags-column-size"));
         }
 
         public override IJournalQueryExecutor QueryExecutor { get; }
